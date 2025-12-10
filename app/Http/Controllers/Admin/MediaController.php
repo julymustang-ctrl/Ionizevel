@@ -91,4 +91,48 @@ class MediaController extends Controller
         if (str_starts_with($mimeType, 'audio/')) return 'music';
         return 'file';
     }
+
+    /**
+     * JSON endpoint for media picker
+     */
+    public function json()
+    {
+        $media = Media::where('type', 'picture')
+            ->orderBy('created_at', 'desc')
+            ->limit(100)
+            ->get(['id_media', 'type', 'file_name', 'path']);
+
+        return response()->json($media);
+    }
+
+    /**
+     * AJAX upload for TinyMCE
+     */
+    public function uploadAjax(Request $request)
+    {
+        $request->validate(['file' => 'required|image|max:5120']);
+
+        $file = $request->file('file');
+        $path = $file->store('media', 'public');
+
+        $media = Media::create([
+            'type' => 'picture',
+            'file_name' => $file->getClientOriginalName(),
+            'path' => 'storage/' . $path,
+            'base_path' => 'storage/media',
+            'date' => now(),
+        ]);
+
+        foreach (Language::online()->get() as $lang) {
+            MediaLang::create([
+                'id_media' => $media->id_media,
+                'lang' => $lang->lang,
+                'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+            ]);
+        }
+
+        return response()->json([
+            'location' => '/' . $media->path
+        ]);
+    }
 }

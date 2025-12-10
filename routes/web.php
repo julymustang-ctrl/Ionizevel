@@ -72,6 +72,8 @@ Route::prefix('admin')->middleware('admin')->group(function () {
         'update' => 'admin.media.update',
         'destroy' => 'admin.media.destroy',
     ]);
+    Route::get('media/json', [MediaController::class, 'json'])->name('admin.media.json');
+    Route::post('media/upload-ajax', [MediaController::class, 'uploadAjax'])->name('admin.media.upload-ajax');
 
     // Menüler
     Route::resource('menus', MenuController::class)->names([

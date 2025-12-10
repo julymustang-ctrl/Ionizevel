@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') | Ionizevel CMS</title>
+
+    <!-- TinyMCE CDN -->
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
     <style>
         /* Reset & Base */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -455,30 +459,6 @@
             gap: 8px;
         }
 
-        /* Tabs - Ionize Style */
-        .tabs {
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 15px;
-        }
-
-        .tabs .tab {
-            display: inline-block;
-            padding: 10px 20px;
-            font-size: 12px;
-            color: #666;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
-        }
-
-        .tabs .tab:hover { color: var(--primary); }
-
-        .tabs .tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-            font-weight: 600;
-        }
-
         /* Language Tabs */
         .lang-tabs {
             display: flex;
@@ -500,29 +480,133 @@
             border-color: var(--primary);
         }
 
-        /* Tree View */
-        .tree { list-style: none; padding-left: 0; }
-        .tree ul { list-style: none; padding-left: 20px; }
-        .tree li { padding: 4px 0; }
-
-        .tree-item {
-            display: flex;
+        /* Media Picker Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
             align-items: center;
-            padding: 4px 8px;
-            cursor: pointer;
-            border-radius: 3px;
+            justify-content: center;
         }
 
-        .tree-item:hover { background: var(--bg-gray-light); }
-        .tree-item.active { background: #cef; }
+        .modal-overlay.show {
+            display: flex;
+        }
 
-        .tree-toggle {
-            width: 16px;
-            height: 16px;
-            margin-right: 5px;
+        .modal {
+            background: white;
+            width: 80%;
+            max-width: 900px;
+            max-height: 80vh;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 15px;
+            background: var(--bg-gray-light);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 { margin: 0; font-size: 14px; }
+
+        .modal-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .media-item {
+            border: 2px solid transparent;
+            padding: 5px;
+            cursor: pointer;
             text-align: center;
+            border-radius: 4px;
+        }
+
+        .media-item:hover {
+            border-color: var(--primary);
+        }
+
+        .media-item.selected {
+            border-color: var(--success);
+            background: #e8f5e9;
+        }
+
+        .media-item img {
+            max-width: 100%;
+            height: 80px;
+            object-fit: cover;
+        }
+
+        .media-item .name {
             font-size: 10px;
-            line-height: 16px;
+            margin-top: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Page-Article Linker */
+        .linked-items {
+            border: 1px dashed #ccc;
+            padding: 10px;
+            min-height: 60px;
+            margin-bottom: 10px;
+            background: #fafafa;
+        }
+
+        .linked-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            background: var(--bg-gray-light);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            margin: 3px;
+            font-size: 11px;
+        }
+
+        .linked-item .remove {
+            cursor: pointer;
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        /* Two column layout */
+        .two-columns {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 900px) {
+            .two-columns { grid-template-columns: 1fr; }
         }
     </style>
     @stack('styles')
@@ -645,6 +729,149 @@
         </div>
     </main>
 
+    <!-- Media Picker Modal -->
+    <div class="modal-overlay" id="mediaPickerModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Medya Seç</h3>
+                <button class="modal-close" onclick="closeMediaPicker()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="media-grid" id="mediaPickerGrid">
+                    <!-- Media items will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // TinyMCE Initialization
+        function initTinyMCE(selector = '.wysiwyg') {
+            tinymce.init({
+                selector: selector,
+                height: 400,
+                menubar: false,
+                plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                ],
+                toolbar: 'undo redo | blocks | ' +
+                    'bold italic forecolor | alignleft aligncenter ' +
+                    'alignright alignjustify | bullist numlist outdent indent | ' +
+                    'image media link | removeformat | code fullscreen help',
+                content_style: 'body { font-family: "Segoe UI", sans-serif; font-size: 14px; }',
+                file_picker_callback: function(callback, value, meta) {
+                    if (meta.filetype === 'image') {
+                        openMediaPicker(function(url) {
+                            callback(url, { alt: '' });
+                        });
+                    }
+                },
+                images_upload_url: '/admin/media/upload-ajax',
+                automatic_uploads: true,
+                images_upload_handler: function(blobInfo, progress) {
+                    return new Promise((resolve, reject) => {
+                        const formData = new FormData();
+                        formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+                        fetch('/admin/media/upload-ajax', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.location) {
+                                resolve(result.location);
+                            } else {
+                                reject('Upload failed');
+                            }
+                        })
+                        .catch(error => reject(error));
+                    });
+                }
+            });
+        }
+
+        // Media Picker
+        let mediaPickerCallback = null;
+
+        function openMediaPicker(callback) {
+            mediaPickerCallback = callback;
+            document.getElementById('mediaPickerModal').classList.add('show');
+            loadMediaItems();
+        }
+
+        function closeMediaPicker() {
+            document.getElementById('mediaPickerModal').classList.remove('show');
+            mediaPickerCallback = null;
+        }
+
+        function loadMediaItems() {
+            fetch('/admin/media/json')
+                .then(response => response.json())
+                .then(data => {
+                    const grid = document.getElementById('mediaPickerGrid');
+                    grid.innerHTML = '';
+                    data.forEach(item => {
+                        if (item.type === 'picture') {
+                            const div = document.createElement('div');
+                            div.className = 'media-item';
+                            div.innerHTML = `
+                                <img src="/${item.path}" alt="${item.file_name}">
+                                <div class="name">${item.file_name}</div>
+                            `;
+                            div.onclick = function() {
+                                if (mediaPickerCallback) {
+                                    mediaPickerCallback('/' + item.path);
+                                    closeMediaPicker();
+                                }
+                            };
+                            grid.appendChild(div);
+                        }
+                    });
+                });
+        }
+
+        // Language Tab Switching
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.lang-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.lang-content').forEach(c => c.style.display = 'none');
+
+                    this.classList.add('active');
+                    const langContent = document.getElementById('lang-' + this.dataset.lang);
+                    if (langContent) {
+                        langContent.style.display = 'block';
+                    }
+
+                    // Refresh TinyMCE when switching tabs
+                    tinymce.triggerSave();
+                });
+            });
+
+            // Initialize TinyMCE if wysiwyg class exists
+            if (document.querySelector('.wysiwyg')) {
+                initTinyMCE();
+            }
+        });
+
+        // Auto-generate URL from title
+        function generateSlug(text) {
+            return text.toString().toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[ğ]/g, 'g').replace(/[ü]/g, 'u').replace(/[ş]/g, 's')
+                .replace(/[ı]/g, 'i').replace(/[ö]/g, 'o').replace(/[ç]/g, 'c')
+                .replace(/[^a-z0-9\-]/g, '')
+                .replace(/\-\-+/g, '-')
+                .replace(/^-+/, '')
+                .replace(/-+$/, '');
+        }
+    </script>
     @stack('scripts')
 </body>
 </html>

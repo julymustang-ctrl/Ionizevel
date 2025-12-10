@@ -8,6 +8,7 @@ use App\Models\Page;
 use App\Models\PageLang;
 use App\Models\Menu;
 use App\Models\Language;
+use App\Models\Article;
 
 class PageController extends Controller
 {
@@ -81,15 +82,16 @@ class PageController extends Controller
      */
     public function edit($id)
     {
-        $page = Page::with('translations')->findOrFail($id);
+        $page = Page::with(['translations', 'articles'])->findOrFail($id);
         $menus = Menu::orderBy('ordering')->get();
         $pages = Page::with('translations')
             ->where('id_page', '!=', $id)
             ->orderBy('ordering')
             ->get();
         $languages = Language::online()->orderBy('ordering')->get();
+        $articles = Article::with('translations')->orderBy('name')->get();
 
-        return view('admin.pages.edit', compact('page', 'menus', 'pages', 'languages'));
+        return view('admin.pages.edit', compact('page', 'menus', 'pages', 'languages', 'articles'));
     }
 
     /**
@@ -129,6 +131,13 @@ class PageController extends Controller
                     'online' => $request->boolean("online_{$lang->lang}", true),
                 ]
             );
+        }
+
+        // Makale ilişkilendirmelerini güncelle
+        if ($request->has('articles')) {
+            $page->articles()->sync($request->articles);
+        } else {
+            $page->articles()->detach();
         }
 
         return redirect()->route('admin.pages.index')
