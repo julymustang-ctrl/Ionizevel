@@ -43,22 +43,24 @@ Proje, Ionize CMS'in tüm detaylarını Laravel'e taşımayı amaçlamaktadır.
 - [x] Çok dilli içerik formları
 - [x] **Checkpoint 2:** feature/A1-auth-db-setup (Stage 2 dahil)
 
-### Aşama 3: İçerik Yönetimi (Devam Ediyor)
-- [ ] Sayfa/Makale modülleri tam işlevsel
-- [ ] Çok dilli içerik tam desteği
-- [ ] Medya yükleme ve yönetim
-- [ ] **Checkpoint 3:** feature/A3-content-management
+### Aşama 3: İçerik Yönetimi ✅
+- [x] TinyMCE WYSIWYG editör entegrasyonu
+- [x] Medya picker modal ve AJAX upload
+- [x] Sayfa-Makale ilişkilendirme
+- [x] SEO ayarları bölümü
+- [x] İki kolonlu düzenleme sayfaları
+- [x] **Checkpoint 3:** feature/A1-auth-db-setup (Stage 3 dahil)
 
-### Aşama 4: Detaylı Fonksiyonlar
-- [ ] Ayarlar modülü
-- [ ] Kullanıcı ve izin yönetimi
-- [ ] SEO dostu URL yapısı
+### Aşama 4: Detaylı Fonksiyonlar (Sonraki)
+- [ ] Frontend tema sistemi
+- [ ] SEO dostu URL router
+- [ ] Önbellek sistemi
 - [ ] Son kontrol ve optimizasyon
 
 ---
 
 ## ⏭️ Sonraki Adım
-Aşama 3: İçerik Yönetimi modüllerinin tam işlevsel hale getirilmesi.
+Aşama 4: Frontend tema sistemi ve SEO URL routing.
 
 ---
 

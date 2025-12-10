@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\FrontendController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\ArticleController;
@@ -18,10 +19,11 @@ use App\Http\Controllers\Admin\SettingController;
 |--------------------------------------------------------------------------
 */
 
-// Ana sayfa
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+// Frontend Routes (SEO-friendly URLs)
+Route::get('/', [FrontendController::class, 'home'])->name('home');
+Route::get('/{lang}', [FrontendController::class, 'home'])->where('lang', '[a-z]{2}')->name('home.lang');
+Route::get('/{lang}/{url}', [FrontendController::class, 'page'])->where('lang', '[a-z]{2}')->name('page');
+Route::get('/{lang}/{pageUrl}/{articleUrl}', [FrontendController::class, 'article'])->where('lang', '[a-z]{2}')->name('article');
 
 // Authentication Routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
