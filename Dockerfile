@@ -77,6 +77,7 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 
 # Install PHP dependencies (no dev)
+RUN rm -f composer.lock
 RUN composer install \
     --no-dev \
     --no-scripts \
