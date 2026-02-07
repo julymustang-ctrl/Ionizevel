@@ -1,0 +1,11 @@
+{
+    "name": "StaticBlock",
+    "alias": "staticblock",
+    "description": "Static content blocks module",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\StaticBlock\\Providers\\StaticBlockServiceProvider"
+    ],
+    "files": []
+}

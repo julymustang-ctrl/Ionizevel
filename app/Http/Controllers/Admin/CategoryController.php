@@ -12,14 +12,23 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::with('translations')->orderBy('ordering')->paginate(20);
+        // Sadece root kategorileri al, children ile birlikte
+        $categories = Category::with(['translations', 'children.translations', 'children.children.translations'])
+            ->roots()
+            ->orderBy('ordering')
+            ->get();
+            
         return view('admin.categories.index', compact('categories'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $languages = Language::online()->orderBy('ordering')->get();
-        return view('admin.categories.create', compact('languages'));
+        $parentId = $request->query('parent', 0);
+        $parent = $parentId ? Category::find($parentId) : null;
+        $allCategories = Category::with('translations')->orderBy('ordering')->get();
+        
+        return view('admin.categories.create', compact('languages', 'parent', 'allCategories'));
     }
 
     public function store(Request $request)
@@ -28,7 +37,9 @@ class CategoryController extends Controller
 
         $category = Category::create([
             'name' => $request->name,
-            'ordering' => Category::max('ordering') + 1,
+            'id_parent' => $request->id_parent ?? 0,
+            'icon' => $request->icon,
+            'ordering' => Category::where('id_parent', $request->id_parent ?? 0)->max('ordering') + 1,
         ]);
 
         foreach (Language::online()->get() as $lang) {
@@ -46,13 +57,22 @@ class CategoryController extends Controller
     {
         $category = Category::with('translations')->findOrFail($id);
         $languages = Language::online()->orderBy('ordering')->get();
-        return view('admin.categories.edit', compact('category', 'languages'));
+        $allCategories = Category::with('translations')
+            ->where('id_category', '!=', $id)
+            ->orderBy('ordering')
+            ->get();
+        
+        return view('admin.categories.edit', compact('category', 'languages', 'allCategories'));
     }
 
     public function update(Request $request, $id)
     {
         $category = Category::findOrFail($id);
-        $category->update(['name' => $request->name]);
+        $category->update([
+            'name' => $request->name,
+            'id_parent' => $request->id_parent ?? 0,
+            'icon' => $request->icon,
+        ]);
 
         foreach (Language::online()->get() as $lang) {
             CategoryLang::updateOrCreate(
@@ -67,9 +87,33 @@ class CategoryController extends Controller
     public function destroy($id)
     {
         $category = Category::findOrFail($id);
+        
+        // Alt kategorileri de sil
+        foreach ($category->children as $child) {
+            $child->translations()->delete();
+            $child->delete();
+        }
+        
         $category->translations()->delete();
         $category->delete();
 
         return redirect()->route('admin.categories.index')->with('success', 'Kategori silindi.');
     }
+
+    /**
+     * Drag-drop sıralama için
+     */
+    public function reorder(Request $request)
+    {
+        $order = $request->input('order', []);
+        
+        foreach ($order as $item) {
+            Category::where('id_category', $item['id'])->update([
+                'ordering' => $item['ordering']
+            ]);
+        }
+
+        return response()->json(['success' => true]);
+    }
 }
+

@@ -9,6 +9,7 @@ use App\Models\PageLang;
 use App\Models\Menu;
 use App\Models\Language;
 use App\Models\Article;
+use App\Models\PageAcl;
 
 class PageController extends Controller
 {
@@ -112,8 +113,13 @@ class PageController extends Controller
             'id_parent' => $request->id_parent ?? 0,
             'online' => $request->boolean('online'),
             'appears' => $request->boolean('appears'),
+            'has_url' => $request->boolean('has_url'),
+            'home' => $request->boolean('home'),
             'updater' => auth()->user()->username,
             'view' => $request->view,
+            'link' => $request->link,
+            'link_type' => $request->link_type,
+            'used_by_module' => $request->used_by_module,
         ]);
 
         // Dil içeriklerini güncelle
@@ -140,6 +146,9 @@ class PageController extends Controller
             $page->articles()->detach();
         }
 
+        // ACL kaydet
+        PageAcl::setPageAccess($page->id_page, $request->input('acl_roles', []));
+
         return redirect()->route('admin.pages.index')
             ->with('success', 'Sayfa başarıyla güncellendi.');
     }
@@ -155,5 +164,69 @@ class PageController extends Controller
 
         return redirect()->route('admin.pages.index')
             ->with('success', 'Sayfa başarıyla silindi.');
+    }
+
+    /**
+     * Sayfa sıralamasını güncelle (drag-drop)
+     */
+    public function reorder(Request $request)
+    {
+        $request->validate([
+            'pages' => 'required|array',
+            'pages.*.id' => 'required|integer|exists:pages,id_page',
+            'pages.*.ordering' => 'required|integer',
+            'pages.*.parent_id' => 'nullable|integer',
+        ]);
+
+        foreach ($request->pages as $pageData) {
+            Page::where('id_page', $pageData['id'])->update([
+                'ordering' => $pageData['ordering'],
+                'id_parent' => $pageData['parent_id'] ?? 0,
+            ]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Sayfayı kopyala
+     */
+    public function duplicate($id)
+    {
+        $original = Page::with('translations')->findOrFail($id);
+        
+        // Yeni sayfa oluştur
+        $newPage = $original->replicate();
+        $newPage->name = $original->name . ' (Kopya)';
+        $newPage->home = false;
+        $newPage->ordering = Page::where('id_parent', $original->id_parent)->max('ordering') + 1;
+        $newPage->save();
+        
+        // Çevirileri kopyala
+        foreach ($original->translations as $translation) {
+            $newTranslation = $translation->replicate();
+            $newTranslation->id_page = $newPage->id_page;
+            $newTranslation->title = $translation->title . ' (Kopya)';
+            $newTranslation->url = $translation->url . '-copy';
+            $newTranslation->save();
+        }
+        
+        return redirect()->route('admin.pages.edit', $newPage->id_page)
+            ->with('success', 'Sayfa başarıyla kopyalandı.');
+    }
+
+    /**
+     * Online durumunu değiştir
+     */
+    public function toggleOnline($id)
+    {
+        $page = Page::findOrFail($id);
+        $page->online = !$page->online;
+        $page->save();
+        
+        return response()->json([
+            'success' => true,
+            'online' => $page->online
+        ]);
     }
 }
