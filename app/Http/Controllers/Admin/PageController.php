@@ -58,6 +58,8 @@ class PageController extends Controller
             'appears' => $request->boolean('appears', true),
             'author' => auth()->user()->username,
             'ordering' => Page::where('id_menu', $request->id_menu)->max('ordering') + 1,
+            'view' => $request->view,
+            'theme' => $request->theme,
         ]);
 
         // Dil içeriklerini kaydet
@@ -117,6 +119,7 @@ class PageController extends Controller
             'home' => $request->boolean('home'),
             'updater' => auth()->user()->username,
             'view' => $request->view,
+            'theme' => $request->theme,
             'link' => $request->link,
             'link_type' => $request->link_type,
             'used_by_module' => $request->used_by_module,

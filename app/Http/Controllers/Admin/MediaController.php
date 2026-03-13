@@ -30,11 +30,24 @@ class MediaController extends Controller
         $file = $request->file('file');
         $path = $file->store('media', 'public');
 
+        // Get image dimensions if it's an image
+        $width = null;
+        $height = null;
+        if (str_starts_with($file->getMimeType(), 'image/')) {
+            $imagePath = storage_path('app/public/' . $path);
+            if (file_exists($imagePath)) {
+                [$width, $height] = getimagesize($imagePath);
+            }
+        }
+
         $media = Media::create([
             'type' => $this->getMediaType($file->getMimeType()),
             'file_name' => $file->getClientOriginalName(),
             'path' => 'storage/' . $path,
             'base_path' => 'storage/media',
+            'file_size' => $file->getSize(),
+            'width' => $width,
+            'height' => $height,
             'date' => now(),
         ]);
 
@@ -100,7 +113,15 @@ class MediaController extends Controller
         $media = Media::where('type', 'picture')
             ->orderBy('created_at', 'desc')
             ->limit(100)
-            ->get(['id_media', 'type', 'file_name', 'path']);
+            ->get(['id_media', 'type', 'file_name', 'path'])
+            ->map(function($item) {
+                return [
+                    'id' => $item->id_media,
+                    'name' => $item->file_name,
+                    'path' => asset($item->path),
+                    'type' => $item->type,
+                ];
+            });
 
         return response()->json($media);
     }
@@ -115,11 +136,22 @@ class MediaController extends Controller
         $file = $request->file('file');
         $path = $file->store('media', 'public');
 
+        // Get image dimensions
+        $imagePath = storage_path('app/public/' . $path);
+        $width = null;
+        $height = null;
+        if (file_exists($imagePath)) {
+            [$width, $height] = @getimagesize($imagePath);
+        }
+
         $media = Media::create([
             'type' => 'picture',
             'file_name' => $file->getClientOriginalName(),
             'path' => 'storage/' . $path,
             'base_path' => 'storage/media',
+            'file_size' => $file->getSize(),
+            'width' => $width,
+            'height' => $height,
             'date' => now(),
         ]);
 
@@ -132,7 +164,7 @@ class MediaController extends Controller
         }
 
         return response()->json([
-            'location' => '/' . $media->path
+            'location' => asset($media->path)
         ]);
     }
 

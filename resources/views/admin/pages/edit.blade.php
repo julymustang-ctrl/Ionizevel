@@ -315,7 +315,7 @@
                             <label>Title ({{ strtoupper($lang->lang) }})</label>
                             <input type="text" name="title_{{ $lang->lang }}" class="form-control"
                                    value="{{ old("title_{$lang->lang}", $translation->title ?? '') }}"
-                                   onkeyup="document.getElementById('url_{{ $lang->lang }}').value = generateSlug(this.value)">
+                                   onkeyup="generateSlugForLang(this, '{{ $lang->lang }}')">
                         </div>
 
                         <div class="form-group">
@@ -457,8 +457,31 @@
                 </div>
                 <div class="options-section-body">
                     <div class="form-group">
+                        <label>Theme</label>
+                        @php
+                            $themesPath = resource_path('views/themes');
+                            $themes = [];
+                            if (\Illuminate\Support\Facades\File::isDirectory($themesPath)) {
+                                foreach (\Illuminate\Support\Facades\File::directories($themesPath) as $themeDir) {
+                                    $themes[] = basename($themeDir);
+                                }
+                            }
+                            if (empty($themes)) {
+                                $themes = ['frontend'];
+                            }
+                            $currentTheme = old('theme', $page->theme ?? 'frontend');
+                        @endphp
+                        <select name="theme" class="form-control" id="themeSelector" onchange="updateViewTemplate()">
+                            @foreach($themes as $theme)
+                                <option value="{{ $theme }}" {{ $currentTheme == $theme ? 'selected' : '' }}>
+                                    {{ ucfirst($theme) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>View template</label>
-                        <input type="text" name="view" class="form-control" value="{{ old('view', $page->view) }}" placeholder="page">
+                        <input type="text" name="view" id="viewTemplate" class="form-control" value="{{ old('view', $page->view) }}" placeholder="page">
                     </div>
                     <div class="checkbox-group">
                         <label>
@@ -718,11 +741,24 @@
     function toggleLinkFields() {
         const linkType = document.getElementById('linkTypeSelect').value;
         const linkField = document.getElementById('linkField');
-        
+
         if (linkType) {
             linkField.style.display = 'block';
         } else {
             linkField.style.display = 'none';
+        }
+    }
+
+    // Update view template based on selected theme
+    function updateViewTemplate() {
+        const themeSelector = document.getElementById('themeSelector');
+        const viewTemplate = document.getElementById('viewTemplate');
+        const selectedTheme = themeSelector.value;
+        
+        // Optional: Auto-suggest view template path based on theme
+        // You can customize this logic based on your needs
+        if (!viewTemplate.value || viewTemplate.value === 'page') {
+            viewTemplate.value = 'page';
         }
     }
 </script>

@@ -30,6 +30,7 @@ class Page extends Model
         'appears',
         'has_url',
         'view',
+        'theme',
         'view_single',
         'article_list_view',
         'article_view',
